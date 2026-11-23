@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voice Writer</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#ffffff; --ink:#1c2024; --muted:#5b636c;
+    --line:#e2e5ea; --accent:#2f6df6; --accent-soft:#e9f0ff; --good:#1a7f4b; --shadow:rgba(20,30,50,.06);
+    --fact:#9a6200; --fact-soft:#fff6e0; --warn:#b42318; --warn-soft:#fdeceb; --good-soft:#e8f6ee;
+    --chip:#6941c6; --chip-soft:#f1ecff;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14171b; --panel:#1b1f25; --ink:#e7eaee; --muted:#9aa3ad;
+      --line:#2b313a; --accent:#5c8dff; --accent-soft:#1d2a44; --good:#49c483; --shadow:rgba(0,0,0,.3);
+      --fact:#f0b54a; --fact-soft:#2e2614; --warn:#ff8a80; --warn-soft:#331c1b; --good-soft:#16291f;
+      --chip:#b69cff; --chip-soft:#261f3d;
+    }
+  }
+  :root[data-theme="dark"]{
+      --bg:#14171b; --panel:#1b1f25; --ink:#e7eaee; --muted:#9aa3ad;
+      --line:#2b313a; --accent:#5c8dff; --accent-soft:#1d2a44; --good:#49c483; --shadow:rgba(0,0,0,.3);
+      --fact:#f0b54a; --fact-soft:#2e2614; --warn:#ff8a80; --warn-soft:#331c1b; --good-soft:#16291f;
+      --chip:#b69cff; --chip-soft:#261f3d;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+  .bar{position:sticky; top:0; z-index:5; background:var(--panel); border-bottom:1px solid var(--line);
+       box-shadow:0 1px 4px var(--shadow); padding:10px 16px; display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center;}
+  .bar h1{font-size:15px; margin:0; font-weight:650}
+  .prog{display:flex; align-items:center; gap:10px}
+  .prog-bar{width:200px; height:8px; background:var(--line); border-radius:999px; overflow:hidden}
+  .prog-fill{height:100%; width:0%; background:var(--good); border-radius:999px; transition:width .2s}
+  .prog-txt{font-size:12.5px; color:var(--muted); white-space:nowrap}
+  .prog-txt b{color:var(--good)}
+  @media (max-width:640px){ .prog-bar{width:110px} }
+  .spacer{flex:1 1 auto}
+  .sync{font-size:12.5px; color:var(--muted); white-space:nowrap}
+  .sync.warn{color:#b25e00}
+  .banner{background:var(--accent-soft); border:1px solid var(--accent); border-radius:10px; padding:10px 14px; font-size:14px; margin:4px 0 14px}
+  .banner:empty{display:none}
+  .banner a{color:var(--accent); font-weight:600; word-break:break-all}
+  button{font:inherit; font-size:13px; font-weight:600; cursor:pointer; border:1px solid var(--line);
+         background:var(--panel); color:var(--ink); padding:7px 12px; border-radius:8px;}
+  button.primary{background:var(--accent); border-color:var(--accent); color:#fff}
+  button:hover{filter:brightness(1.03)}
+  main{max-width:860px; margin:0 auto; padding:18px 16px 140px}
+  .title{font-size:22px; font-weight:700; margin:6px 0 2px}
+  .subtitle{font-size:14px; color:var(--muted); margin:0 0 6px}
+  .hint{font-size:12.5px; color:var(--muted); margin:6px 0 16px}
+  .section{margin:30px 0 6px; font-size:13px; font-weight:700; letter-spacing:1.1px; text-transform:uppercase;
+           color:var(--accent); border-bottom:1px solid var(--line); padding-bottom:6px}
+  .block{background:var(--panel); border:1px solid var(--line); border-radius:12px; box-shadow:0 1px 3px var(--shadow);
+         margin:14px 0; padding:14px 16px 16px;}
+  .q{display:flex; gap:10px; align-items:flex-start; margin-bottom:11px}
+  .q .num{font-size:11px; font-weight:700; color:var(--accent); background:var(--accent-soft); border-radius:20px;
+          padding:2px 9px; min-width:40px; text-align:center; flex-shrink:0; margin-top:1px}
+  .q .text{font-size:15px; font-weight:600; line-height:1.45}
+  .look{margin:0 0 10px 50px; border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 8px 8px 0; padding:7px 12px 8px}
+  .look + .look{margin-top:-4px}
+  .look .where{font-size:11px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:.7px}
+  .look .quote{font-size:14px; font-style:italic; margin-top:2px}
+  .look .ctx{font-size:14px; margin-top:3px; line-height:1.5}
+  .look .ctx mark, .reading mark{background:#ffe58a; color:#1c2024; border-radius:3px; padding:0 2px}
+  .look img.shot{display:block; max-width:100%; max-height:260px; margin:8px 0 2px; border:1px solid rgba(0,0,0,.15); border-radius:6px; cursor:zoom-in; background:#fff}
+  .look img.shot.big{max-height:none; cursor:zoom-out}
+  .look .ctx a{font-size:12px; color:var(--accent); margin-left:4px; white-space:nowrap}
+  .readings{margin:10px 0 6px}
+  .reading{background:var(--panel); border:1px solid var(--line); border-radius:12px; box-shadow:0 1px 3px var(--shadow); margin:12px 0; padding:4px 16px}
+  .reading summary{cursor:pointer; font-weight:650; font-size:15px; padding:9px 0}
+  .reading .rp{display:flex; gap:10px; margin:0 0 11px; font-size:14.5px; line-height:1.55; scroll-margin-top:70px; border-radius:6px}
+  .reading .rp .pn{flex-shrink:0; min-width:28px; font-size:11px; font-weight:700; color:var(--accent); padding-top:3px}
+  .reading .rp.flash{background:var(--accent-soft); transition:background .3s}
+  .pane{margin:0 0 10px 50px; font-size:13.5px; border-radius:8px; padding:7px 12px 8px}
+  .pane .lbl{display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.7px; margin-bottom:2px}
+  .pane ul{margin:2px 0 0; padding-left:18px}
+  .pane li{margin:2px 0}
+  .facts{background:var(--fact-soft); border-left:3px solid var(--fact); border-radius:0 8px 8px 0; color:var(--ink)}
+  .facts .lbl{color:var(--fact)}
+  .check{color:var(--muted); padding-top:2px; padding-bottom:2px}
+  .check .lbl{color:var(--muted)}
+  .cautions{background:var(--warn-soft); border-left:3px solid var(--warn); border-radius:0 8px 8px 0; color:var(--ink)}
+  .cautions .lbl{color:var(--warn)}
+  .needs{background:var(--good-soft); border-left:3px solid var(--good); border-radius:0 8px 8px 0; color:var(--ink)}
+  .needs .lbl{color:var(--good)}
+  .starters{border:1px dashed var(--chip); color:var(--ink)}
+  .starters .lbl{color:var(--chip)}
+  .srow{display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-top:4px}
+  .srow .which{font-size:11.5px; font-weight:700; color:var(--muted); min-width:84px}
+  .chip{font-size:13px; font-weight:500; border:1px solid var(--chip); background:var(--chip-soft); color:var(--ink);
+        padding:3px 10px; border-radius:999px; cursor:pointer}
+  .chip:hover{filter:brightness(.97)}
+  .starters .tip{font-size:11.5px; color:var(--muted); margin-top:5px}
+  @media (max-width:640px){ .look,.pane{margin-left:0} .srow .which{min-width:0; width:100%} }
+  textarea{width:100%; min-height:120px; resize:none; overflow:hidden; font:inherit; font-size:15px; color:var(--ink);
+           background:var(--bg); border:1px solid var(--line); border-radius:9px; padding:12px 13px; line-height:1.55; display:block}
+  textarea:focus{outline:2px solid var(--accent); outline-offset:-1px; border-color:var(--accent)}
+  .count{font-size:11px; color:var(--muted); margin-top:5px; text-align:right}
+  /* modal */
+  .overlay{position:fixed; inset:0; background:rgba(10,14,20,.5); display:none; align-items:center; justify-content:center; padding:18px; z-index:20}
+  .overlay.show{display:flex}
+  .modal{background:var(--panel); border:1px solid var(--line); border-radius:12px; width:min(820px,100%); max-height:90vh; display:flex; flex-direction:column; overflow:hidden}
+  .modal .mhead{padding:12px 16px; border-bottom:1px solid var(--line); display:flex; gap:10px; align-items:center}
+  .modal .mhead h2{font-size:15px; margin:0; flex:1}
+  .modal textarea{flex:1; min-height:340px; border:0; padding:16px; font:13px/1.5 ui-monospace,Menlo,Consolas,monospace; resize:none; background:var(--bg); border-radius:0}
+  .modal .mfoot{padding:10px 16px; border-top:1px solid var(--line); display:flex; gap:10px; justify-content:flex-end}
+</style>
+</head>
+<body>
+<div class="bar">
+  <h1 id="bartitle">Voice Writer</h1>
+  <div class="prog"><div class="prog-bar"><div class="prog-fill" id="pfill"></div></div><span class="prog-txt" id="ptxt">0 / 0</span></div>
+  <span class="prog-txt" id="wtxt"></span>
+  <span class="sync" id="sync"></span>
+  <span class="spacer"></span>
+  <button onclick="toggleTheme()">Theme</button>
+  <button onclick="clearAll()">Clear</button>
+  <button class="primary" onclick="assemble()">Assemble draft &#9656;</button>
+</div>
+
+<main>
+  <div class="banner" id="banner"></div>
+  <div class="title" id="title"></div>
+  <div class="subtitle" id="subtitle"></div>
+  <p class="hint">Answer each question in your own words. There is no "right" version to react to on purpose. <b>Look at</b> points you to the exact spot (quotes are copied word for word from the source), <b>Facts to use</b> lists numbers and sources you can cite, <b>Check</b> lists things to ask yourself, <b>Watch out</b> flags easy mistakes, <b>Your answer needs</b> says what the box should contain, and <b>Sentence starters</b> (when present) are optional openings: click one to drop it into the box. None of them say what the answer is. Your answers autosave to disk next to this worksheet while the Voice Writer server runs (and in this browser either way). "Assemble draft" stitches them into a Markdown draft (one paragraph per group); any question you leave blank is simply left out.</p>
+  <div class="readings" id="readings"></div>
+  <div id="list"></div>
+</main>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="mhead"><h2>Assembled draft (Markdown)</h2>
+      <button onclick="copyOut()">Copy</button>
+      <button class="primary" onclick="downloadOut()">Download .md</button>
+      <button onclick="closeModal()">Close</button></div>
+    <textarea id="out" readonly spellcheck="false"></textarea>
+    <div class="mfoot"><span class="hint" id="copied"></span></div>
+  </div>
+</div>
+
+<script type="application/json" id="data">__DATA__</script>
+<script>
+const data=JSON.parse(document.getElementById('data').textContent);
+const PRE=data.storeKey || "vw:default:";
+function get(k){ try{ return localStorage.getItem(PRE+k); }catch(e){ return null; } }
+function set(k,v){ try{ localStorage.setItem(PRE+k,v); }catch(e){} }
+function del(k){ try{ localStorage.removeItem(PRE+k); }catch(e){} }
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+document.title = data.title ? data.title+" — Voice Writer" : "Voice Writer";
+document.getElementById('bartitle').textContent = data.title || "Voice Writer";
+document.getElementById('title').textContent = data.title || "";
+document.getElementById('subtitle').textContent = data.subtitle || "";
+const list=document.getElementById('list');
+let TOTAL=0;
+// readings: full texts at the top, numbered paragraphs; looks that point into them show the paragraph
+const READ=data.readings||[];
+function para(c){ const p=(READ[c.r]||{paras:[]}).paras[c.p]||'';
+  return c.hl?esc(p.slice(0,c.hl[0]))+'<mark>'+esc(p.slice(c.hl[0],c.hl[1]))+'</mark>'+esc(p.slice(c.hl[1])):esc(p); }
+if(READ.length){
+  const rd=document.getElementById('readings');
+  rd.innerHTML='<div class="section">Read first</div>'+READ.map((r,ri)=>'<details class="reading"'+(r.collapsed?'':' open')+'><summary>'+esc(r.title||('Reading '+(ri+1)))+'</summary>'+
+    r.paras.map((p,pi)=>'<div class="rp" id="r'+ri+'p'+pi+'"><span class="pn">&para;'+(pi+1)+'</span><span>'+esc(p)+'</span></div>').join('')+'</details>').join('');
+}
+function jump(ri,pi){ const el=document.getElementById('r'+ri+'p'+pi); if(!el) return; el.closest('details').open=true;
+  el.scrollIntoView({behavior:'smooth',block:'center'}); el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),1400); }
+data.sections.forEach((sec,si)=>{
+  const d=document.createElement('div'); d.className='section'; d.textContent=sec.heading||('Section '+(si+1)); list.appendChild(d);
+  sec.blocks.forEach(b=>{
+    TOTAL++;
+    const card=document.createElement('div'); card.className='block';
+    const looks=(Array.isArray(b.look)?b.look:(b.look?[b.look]:[])).map(l=>typeof l==='string'?{where:l}:l);
+    const arr=x=>Array.isArray(x)?x:(x?[x]:[]);
+    const pane=(cls,label,items)=>items.length?'<div class="pane '+cls+'"><span class="lbl">'+label+'</span><ul>'+
+                   items.map(c=>'<li>'+esc(c)+'</li>').join('')+'</ul></div>':'';
+    // starters: a list, or {first:[...], second:[...]} for a two-sentence answer
+    const st=b.starters, rows=!st?[]:(Array.isArray(st)?[['',st]]:[['1st sentence',arr(st.first)],['2nd sentence',arr(st.second)]]);
+    const starters=rows.length?'<div class="pane starters"><span class="lbl">Sentence starters (optional)</span>'+
+                   rows.map(([w,xs])=>'<div class="srow">'+(w?'<span class="which">'+w+'</span>':'')+
+                     xs.map(x=>'<button type="button" class="chip" data-s="'+esc(x)+'">'+esc(x)+'</button>').join('')+'</div>').join('')+
+                   '<div class="tip">Click one to put it at your cursor. Finish the thought yourself.</div></div>':'';
+    card.innerHTML='<div class="q"><span class="num">'+esc(b.id)+'</span><span class="text">'+esc(b.question)+'</span></div>'+
+                   looks.map(l=>'<div class="look"><div class="where">Look at: '+esc(l.where||'')+
+                     (l.ctx?', paragraph '+(l.ctx.p+1):'')+'</div>'+
+                     (l.ctx?'<div class="ctx">'+para(l.ctx)+' <a href="#" onclick="jump('+l.ctx.r+','+l.ctx.p+');return false">see it in full</a></div>'
+                       :(l.quote?'<div class="quote">&ldquo;'+esc(l.quote)+'&rdquo;</div>':''))+
+                     (l.imgs||[]).map(u=>'<img class="shot" src="'+u+'" alt="'+esc(l.where||'')+'" title="Click to enlarge" onclick="this.classList.toggle(\'big\')">').join('')+'</div>').join('')+
+                   pane('facts','Facts to use',arr(b.facts))+
+                   pane('check','Check',arr(b.check))+
+                   pane('cautions','Watch out',arr(b.cautions))+
+                   (b.needs?'<div class="pane needs"><span class="lbl">Your answer needs</span>'+esc(b.needs)+'</div>':'')+
+                   starters+
+                   '<textarea data-id="'+esc(b.id)+'" placeholder="Write it in your own words…">'+esc(get(b.id)||'')+'</textarea>'+
+                   '<div class="count"></div>';
+    list.appendChild(card);
+    const ta=card.querySelector('textarea'), count=card.querySelector('.count');
+    card.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>{
+      const s=c.dataset.s.replace(/\s*\.\.\.\s*$/,'').replace(/\s*…\s*$/,'')+' ';
+      const a=ta.selectionStart??ta.value.length, z=ta.selectionEnd??a, before=ta.value.slice(0,a);
+      const pad=before && !/\s$/.test(before)?' ':'';
+      ta.value=before+pad+s+ta.value.slice(z); ta.focus();
+      const pos=(before+pad+s).length; ta.setSelectionRange(pos,pos);
+      ta.dispatchEvent(new Event('input'));
+    }));
+    function grow(){ ta.style.height='auto'; ta.style.height=(ta.scrollHeight+2)+'px'; }
+    function refresh(){ const w=ta.value.trim()?ta.value.trim().split(/\s+/).length:0; count.textContent=w?(w+' words'):''; grow(); }
+    ta.addEventListener('input', ()=>{ set(b.id, ta.value); stamp(b.id); queue(b.id, ta.value); refresh(); updateProgress(); });
+    ta._refresh=refresh;
+    refresh();
+  });
+});
+function updateProgress(){
+  let filled=0, words=0; document.querySelectorAll('textarea[data-id]').forEach(t=>{ const v=t.value.trim(); if(v){ filled++; words+=v.split(/\s+/).length; } });
+  const goal=+data.word_target||0;
+  document.getElementById('wtxt').innerHTML=goal?(words>=goal?'<b>'+words+'</b>':words)+' / '+goal+' words':words+' words';
+  const pct=TOTAL?Math.round(filled/TOTAL*100):0;
+  document.getElementById('pfill').style.width=pct+'%';
+  document.getElementById('ptxt').innerHTML='<b>'+filled+'</b> / '+TOTAL;
+}
+updateProgress();
+
+// Sync with the Voice Writer server (server.py), which keeps answers on disk next to the worksheet.
+// Served from http://127.0.0.1 the page talks to its own origin; opened as a local file it talks to
+// the server by absolute path and links to the http copy (browser extensions like Grammarly skip file://).
+const VW_SERVER='http://127.0.0.1:8795';
+const ON_HTTP=location.protocol.startsWith('http');
+const API=ON_HTTP?'':VW_SERVER;
+const WHO=ON_HTTP?{w:decodeURIComponent(location.pathname.replace(/^\/w\//,''))}
+                 :{file:decodeURIComponent(location.pathname).replace(/^\/([A-Za-z]:)/,'$1')};
+function stamp(id){ set('_t:'+id, String(Date.now())); }
+function stampOf(id){ return +(get('_t:'+id)||0); }
+let pending={}, timer=null, ready=false;
+function status(t, warn){ const s=document.getElementById('sync'); s.textContent=t; s.classList.toggle('warn',!!warn); }
+function queue(id,v){ pending[id]=v; if(!ready) return; clearTimeout(timer); timer=setTimeout(push,400); status('Saving…'); }
+function push(){
+  const sent=pending; pending={};
+  const times={}; Object.keys(sent).forEach(k=>times[k]=stampOf(k)||Date.now());
+  fetch(API+'/api/answers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({answers:sent,times},WHO))})
+    .then(r=>r.ok?r.json():Promise.reject())
+    .then(()=>status('Saved'),()=>{ Object.keys(sent).forEach(k=>{ if(!(k in pending)) pending[k]=sent[k]; });
+      status(ON_HTTP?'Server off: kept in this browser only':'Kept in this browser only', true); });
+}
+function banner(h){ document.getElementById('banner').innerHTML=h; }
+const LOCAL_NOTE='<b>Grammarly and other extensions don\'t run on local files.</b> ';
+fetch(API+'/api/answers?'+new URLSearchParams(WHO)).then(r=>r.ok?r.json():Promise.reject()).then(d=>{
+  const sa=d.answers||{}, st=d.times||{};
+  document.querySelectorAll('textarea[data-id]').forEach(ta=>{
+    const id=ta.dataset.id, s=sa[id]||'', srvT=st[id]||0, locT=stampOf(id);
+    if(srvT>locT){ if(ta.value!==s){ ta.value=s; s?set(id,s):del(id); ta._refresh(); } set('_t:'+id,String(srvT)); }
+    else if((locT>srvT || (!srvT && ta.value.trim())) && ta.value!==s){ if(!locT) stamp(id); pending[id]=ta.value; }
+  });
+  ready=true; updateProgress();
+  if(Object.keys(pending).length) push(); else status('Saved');
+  if(!ON_HTTP){ const u=VW_SERVER+d.url; banner(LOCAL_NOTE+'Open this worksheet at <a href="'+esc(u)+'">'+esc(u)+'</a>. Your answers are already there.'); }
+}).catch(()=>{
+  ready=true;
+  status(ON_HTTP?'Server off: kept in this browser only':'Kept in this browser only', true);
+  if(!ON_HTTP) banner(LOCAL_NOTE+'Start the Voice Writer server (python server.py in the skill folder) and reload this page to get a link that works with them.');
+});
+
+function ans(id){ const s=get(id); return (s&&s.trim())?s.trim():''; }
+function buildMarkdown(){
+  const out=[];
+  if(data.emit_title!==false && data.title) out.push('# '+data.title);
+  data.sections.forEach((sec,si)=>{
+    if(sec.emit_heading) out.push('## '+(sec.heading||('Section '+(si+1))));
+    let cur=null, buf=[];
+    const flush=()=>{ if(buf.length){ out.push(buf.join(' ')); buf=[]; } cur=null; };
+    sec.blocks.forEach(b=>{ const v=ans(b.id); const p=b.para||('sec'+si);
+      if(cur!==null && p===cur){ if(v) buf.push(v); }
+      else { flush(); if(v) buf.push(v); cur=p; } });
+    flush();
+  });
+  return out.join('\n\n')+'\n';
+}
+const overlay=document.getElementById('overlay');
+function assemble(){ document.getElementById('out').value=buildMarkdown(); overlay.classList.add('show'); document.getElementById('copied').textContent=''; }
+function closeModal(){ overlay.classList.remove('show'); }
+overlay.addEventListener('click', e=>{ if(e.target===overlay) closeModal(); });
+function copyOut(){ const t=document.getElementById('out'); t.select();
+  navigator.clipboard.writeText(t.value).then(()=>{document.getElementById('copied').textContent='Copied.';},
+    ()=>{document.execCommand('copy');document.getElementById('copied').textContent='Copied.';}); }
+function downloadOut(){ const b=new Blob([buildMarkdown()],{type:'text/markdown'}); const a=document.createElement('a');
+  a.href=URL.createObjectURL(b); a.download=(data.slug||'draft')+'.md'; a.click(); URL.revokeObjectURL(a.href); }
+function clearAll(){
+  if(!confirm('Clear everything you have written in this worksheet? This cannot be undone.')) return;
+  data.sections.forEach(sec=>sec.blocks.forEach(b=>{ del(b.id); stamp(b.id); queue(b.id,''); }));
+  document.querySelectorAll('textarea[data-id]').forEach(t=>{ t.value=''; t.style.height='auto'; t.closest('.block').querySelector('.count').textContent=''; });
+  updateProgress();
+}
+function toggleTheme(){ const r=document.documentElement; const cur=r.getAttribute('data-theme');
+  const next=cur==='dark'?'light':(cur==='light'?'dark':(matchMedia('(prefers-color-scheme: dark)').matches?'light':'dark'));
+  r.setAttribute('data-theme',next); try{ localStorage.setItem(PRE+'_theme',next); }catch(e){} }
+try{ const th=localStorage.getItem(PRE+'_theme'); if(th) document.documentElement.setAttribute('data-theme',th); }catch(e){}
+</script>
+</body>
+</html>
